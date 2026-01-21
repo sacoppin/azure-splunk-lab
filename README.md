@@ -5,29 +5,26 @@ This repository contains the Infrastructure as Code (IaC) scripts required to de
 
 The project automates the provisioning of cloud resources using **Terraform** and manages the configuration of application services using **Ansible**. It demonstrates a real-world scenario of log aggregation, where a Universal Forwarder collects system logs and transmits them to a central Splunk Indexer.
 
-## Architecture Overview
+---
 
+## Architecture Overview
 The infrastructure consists of two Azure Virtual Machines deployed within a secure Virtual Network (VNet):
 
-* **Splunk Indexer (Server)**
-    * **OS:** Ubuntu 22.04 LTS
-    * **Size:** Standard_B2s
-    * **Role:** Receives, parses, and indexes incoming log data.
-    * **Networking:** Exposes port 8000 (Web UI) and 9997 (S2S Receiver).
+| Component               | Details                                                                                     |
+|-------------------------|---------------------------------------------------------------------------------------------|
+| **Splunk Indexer**      | **OS:** Ubuntu 22.04 LTS<br>**Size:** Standard_B2s (optimized for memory)<br>**Role:** Receives, parses, and indexes incoming log data.<br>**Networking:** Exposes port 8000 (Web UI) and 9997 (S2S Receiver). |
+| **Universal Forwarder** | **OS:** Ubuntu 22.04 LTS<br>**Size:** Standard_B1s<br>**Role:** Monitors `/var/log/syslog` and forwards data to the Indexer. |
+| **Security**            | Network Security Groups (NSG) are configured to restrict administrative access (SSH/Web) to authorized IP addresses only. |
 
-* **Universal Forwarder (Client)**
-    * **OS:** Ubuntu 22.04 LTS
-    * **Size:** Standard_B1s
-    * **Role:** Monitors `/var/log/syslog` and forwards data to the Indexer.
-
-* **Security:** Network Security Groups (NSG) are configured to restrict administrative access (SSH/Web) to authorized IP addresses only.
+---
 
 ## Prerequisites
+- Azure CLI installed and authenticated (`az login`).
+- Terraform (v1.0+).
+- Ansible (v2.9+).
+- SSH Key pair generated for Azure authentication.
 
-* Azure CLI installed and authenticated (`az login`).
-* Terraform (v1.0+).
-* Ansible (v2.9+).
-* SSH Key pair generated for Azure authentication.
+---
 
 ## Deployment Instructions
 
@@ -41,56 +38,60 @@ terraform apply -auto-approve
 
 ```
 
+
 Note: Upon completion, Terraform will output the public IP addresses for both the Indexer and the Forwarder.
 
 ### 2. Configuration Management (Ansible)
-Update the inventory.ini file with the IP addresses obtained from the previous step.
-
-Execute the playbook to install and configure the Splunk binaries. Note: To ensure security, the administrator password must be passed as an extra variable at runtime.
-
-Bash
+First, update the inventory.ini file with the IP addresses obtained from the previous step.
+Then, execute the playbook to install and configure the Splunk binaries.
+Note: To ensure security, the administrator password must be passed as an extra variable at runtime.
+bash
+Copy
 
 # Replace 'YourStrongPassword123!' with your actual password
 ansible-playbook -i inventory.ini install_splunk.yml --extra-vars "splunk_password=YourStrongPassword123!"
 
+
 ### 3. Validation
+
 Access the Splunk Web Interface at http://<INDEXER_IP>:8000.
-
 Login with the username admin and the password defined in the step above.
-
 Execute the following search query to verify log ingestion:
-
-Extrait de code
+Copy
 
 index=main sourcetype=syslog
-Technical Challenges & Resolution Log
-During the implementation, the following technical issues were encountered and resolved:
 
-Issue: Azure Public IP Allocation (SkuMismatch)
 
-Error: Deployment failed with IPv4BasicSkuPublicIpCountLimitReached.
+## Technical Challenges & Resolution Log
 
-Root Cause: Azure has deprecated Basic SKU Public IPs for new subscriptions in the deployed region.
 
-Resolution: Updated main.tf to explicitly define sku = "Standard" and allocation_method = "Static" for all public IP resources.
+  
+    
+      Issue
+      Root Cause
+      Resolution
+    
+  
+  
+    
+      Azure Public IP Allocation (SkuMismatch)
+      Azure has deprecated Basic SKU Public IPs for new subscriptions in the deployed region.
+      Refactored main.tf to explicitly define sku = "Standard" and allocation_method = "Static" for all public IP resources.
+    
+    
+      Forwarder Connectivity Failure
+      An IP mismatch occurred during the configuration phase.
+      Verified service status on Indexer using `ss -tulpn
+    
+  
 
-Issue: Forwarder Connectivity Failure
 
-Error: The Universal Forwarder status was Configured but inactive.
 
-Root Cause: An IP mismatch occurred during the configuration phase. The Forwarder was pointing to an outdated private IP address of the Indexer (10.0.1.4) instead of the actual assigned IP (10.0.1.5).
+#### Security Considerations
 
-Resolution:
-
-Verified service status on Indexer using ss -tulpn | grep 9997 (Confirmed LISTEN state).
-
-Verified network reachability using telnet (Confirmed Connection Refused).
-
-Corrected the forwarding destination via the Splunk CLI on the client machine.
-
-Security Considerations
 Secrets Management: No hardcoded credentials exist in the codebase. SSH keys and variable files (.tfvars) are excluded via .gitignore.
+Network Isolation: Inter-node communication (Splunk-to-Splunk) is restricted to the internal VNet subnet range.
+Copy
 
-Network isolation: Inter-node communication (Splunk-to-Splunk) is restricted to the internal VNet subnet range.
 
 
