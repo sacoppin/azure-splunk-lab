@@ -43,8 +43,7 @@ Note: Upon completion, Terraform will output the public IP addresses for both th
 First, update the inventory.ini file with the IP addresses obtained from the previous step.
 Then, execute the playbook to install and configure the Splunk binaries.
 Note: To ensure security, the administrator password must be passed as an extra variable at runtime.
-bash
-Copy
+
 
 #### Replace 'YourStrongPassword123!' with your actual password
 ansible-playbook -i inventory.ini install_splunk.yml --extra-vars "splunk_password=YourStrongPassword123!"
@@ -55,7 +54,7 @@ ansible-playbook -i inventory.ini install_splunk.yml --extra-vars "splunk_passwo
 Access the Splunk Web Interface at http://<INDEXER_IP>:8000.
 Login with the username admin and the password defined in the step above.
 Execute the following search query to verify log ingestion:
-Copy
+
 
 index=main sourcetype=syslog
 
