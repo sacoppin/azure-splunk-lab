@@ -37,7 +37,9 @@ Initialize the project and apply the configuration to create the Azure resources
 ```bash
 cd terraform
 terraform init
-terraform apply -auto-approve ```
+terraform apply -auto-approve
+
+```
 
 Note: Upon completion, Terraform will output the public IP addresses for both the Indexer and the Forwarder.
 
