@@ -9,12 +9,11 @@ The project automates the provisioning of cloud resources using **Terraform** an
 
 ## Architecture Overview
 The infrastructure consists of two Azure Virtual Machines deployed within a secure Virtual Network (VNet):
-
-| Component               | Details                                                                                     |
-|-------------------------|---------------------------------------------------------------------------------------------|
-| **Splunk Indexer**      | **OS:** Ubuntu 22.04 LTS<br>**Size:** Standard_B2s (optimized for memory)<br>**Role:** Receives, parses, and indexes incoming log data.<br>**Networking:** Exposes port 8000 (Web UI) and 9997 (S2S Receiver). |
-| **Universal Forwarder** | **OS:** Ubuntu 22.04 LTS<br>**Size:** Standard_B1s<br>**Role:** Monitors `/var/log/syslog` and forwards data to the Indexer. |
-| **Security**            | Network Security Groups (NSG) are configured to restrict administrative access (SSH/Web) to authorized IP addresses only. |
+   Component               | Details                                                                                     |
+ |-------------------------|---------------------------------------------------------------------------------------------|
+ | **Splunk Indexer**      | **OS:** Ubuntu 22.04 LTS<br>**Size:** Standard_B2s (optimized for memory)<br>**Role:** Receives, parses, and indexes incoming log data.<br>**Networking:** Exposes port 8000 (Web UI) and 9997 (S2S Receiver). |
+ | **Universal Forwarder** | **OS:** Ubuntu 22.04 LTS<br>**Size:** Standard_B1s<br>**Role:** Monitors `/var/log/syslog` and forwards data to the Indexer. |
+ | **Security**            | Network Security Groups (NSG) are configured to restrict administrative access (SSH/Web) to authorized IP addresses only. |
 
 ---
 
@@ -38,7 +37,6 @@ terraform apply -auto-approve
 
 ```
 
-
 Note: Upon completion, Terraform will output the public IP addresses for both the Indexer and the Forwarder.
 
 ### 2. Configuration Management (Ansible)
@@ -60,38 +58,4 @@ Execute the following search query to verify log ingestion:
 Copy
 
 index=main sourcetype=syslog
-
-
-## Technical Challenges & Resolution Log
-
-
-  
-    
-      Issue
-      Root Cause
-      Resolution
-    
-  
-  
-    
-      Azure Public IP Allocation (SkuMismatch)
-      Azure has deprecated Basic SKU Public IPs for new subscriptions in the deployed region.
-      Refactored main.tf to explicitly define sku = "Standard" and allocation_method = "Static" for all public IP resources.
-    
-    
-      Forwarder Connectivity Failure
-      An IP mismatch occurred during the configuration phase.
-      Verified service status on Indexer using `ss -tulpn
-    
-  
-
-
-
-#### Security Considerations
-
-Secrets Management: No hardcoded credentials exist in the codebase. SSH keys and variable files (.tfvars) are excluded via .gitignore.
-Network Isolation: Inter-node communication (Splunk-to-Splunk) is restricted to the internal VNet subnet range.
-Copy
-
-
 
