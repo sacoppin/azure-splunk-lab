@@ -3,18 +3,20 @@
   hosts: all
   become: true
   vars:
-    # Splunk Enterprise 9.1.1 (Check valid URL on splunk.com if 404)
+    # --- DOWNLOAD LINKS ---
+    # (Links valid for Splunk 9.1.1 - Update if needed)
     splunk_url: "https://download.splunk.com/products/splunk/releases/9.1.1/linux/splunk-9.1.1-64e843ea36b1-linux-2.6-amd64.deb"
-    # Universal Forwarder 9.1.1
     forwarder_url: "https://download.splunk.com/products/universalforwarder/releases/9.1.1/linux/splunkforwarder-9.1.1-64e843ea36b1-linux-2.6-amd64.deb"
     
-    # Credentials
+    # --- CREDENTIALS ---
     admin_user: "admin"
-    admin_pass: "admin2026!" # Password for the Web UI
+    # SECURITY BEST PRACTICE: We use a variable passed at runtime, not hardcoded here.
+    admin_pass: "{{ splunk_password }}" 
     
-
-    # Put the PRIVATE IP of your Indexer here (e.g., 10.0.1.4)
-    indexer_private_ip: "10.0.1.4" 
+    # --- NETWORK CONFIG ---
+    #  IMPORTANT: Replace this with the ACTUAL Private IP of your Indexer
+    # You can find it in Azure Portal or by typing 'hostname -I' on the Indexer VM.
+    indexer_private_ip: "10.0.1.5" 
 
   tasks:
     # ==========================================
