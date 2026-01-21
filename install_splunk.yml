@@ -1,0 +1,71 @@
+---
+- name: Deploy Splunk Architecture (Indexer & Forwarder)
+  hosts: all
+  become: true
+  vars:
+    # Splunk Enterprise 9.1.1 (Check valid URL on splunk.com if 404)
+    splunk_url: "https://download.splunk.com/products/splunk/releases/9.1.1/linux/splunk-9.1.1-64e843ea36b1-linux-2.6-amd64.deb"
+    # Universal Forwarder 9.1.1
+    forwarder_url: "https://download.splunk.com/products/universalforwarder/releases/9.1.1/linux/splunkforwarder-9.1.1-64e843ea36b1-linux-2.6-amd64.deb"
+    
+    # Credentials
+    admin_user: "admin"
+    admin_pass: "admin2026!" # Password for the Web UI
+    
+
+    # Put the PRIVATE IP of your Indexer here (e.g., 10.0.1.4)
+    indexer_private_ip: "10.0.1.4" 
+
+  tasks:
+    # ==========================================
+    # 1. SPLUNK INDEXER CONFIGURATION
+    # ==========================================
+    - name: Download Splunk Enterprise (Indexer)
+      get_url:
+        url: "{{ splunk_url }}"
+        dest: "/tmp/splunk.deb"
+      when: "'indexer' in group_names"
+
+    - name: Install Splunk Enterprise
+      apt:
+        deb: "/tmp/splunk.deb"
+      when: "'indexer' in group_names"
+
+    - name: Start Splunk & Accept License
+      command: "/opt/splunk/bin/splunk start --accept-license --answer-yes --no-prompt --seed-passwd {{ admin_pass }}"
+      when: "'indexer' in group_names"
+      ignore_errors: yes # Ignore if already running
+
+    - name: Enable Listening Port 9997 (Receiver)
+      command: "/opt/splunk/bin/splunk enable listen 9997 -auth {{ admin_user }}:{{ admin_pass }}"
+      when: "'indexer' in group_names"
+      ignore_errors: yes
+
+    # ==========================================
+    # 2. UNIVERSAL FORWARDER CONFIGURATION
+    # ==========================================
+    - name: Download Universal Forwarder
+      get_url:
+        url: "{{ forwarder_url }}"
+        dest: "/tmp/forwarder.deb"
+      when: "'forwarder' in group_names"
+
+    - name: Install Universal Forwarder
+      apt:
+        deb: "/tmp/forwarder.deb"
+      when: "'forwarder' in group_names"
+
+    - name: Start Forwarder & Accept License
+      command: "/opt/splunkforwarder/bin/splunk start --accept-license --answer-yes --no-prompt --seed-passwd {{ admin_pass }}"
+      when: "'forwarder' in group_names"
+      ignore_errors: yes
+
+    - name: Connect Forwarder to Indexer (S2S)
+      command: "/opt/splunkforwarder/bin/splunk add forward-server {{ indexer_private_ip }}:9997 -auth {{ admin_user }}:{{ admin_pass }}"
+      when: "'forwarder' in group_names"
+      ignore_errors: yes
+
+    - name: Add Monitor for System Logs (Syslog)
+      command: "/opt/splunkforwarder/bin/splunk add monitor /var/log/syslog -index main -auth {{ admin_user }}:{{ admin_pass }}"
+      when: "'forwarder' in group_names"
+      ignore_errors: yes

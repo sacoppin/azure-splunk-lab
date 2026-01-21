@@ -1,0 +1,9 @@
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.ssh/
+id_rsa
+id_rsa.pub
+*.lock.info
+inventory.ini
