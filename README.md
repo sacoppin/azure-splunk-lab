@@ -37,11 +37,11 @@ Initialize the project and apply the configuration to create the Azure resources
 ```bash
 cd terraform
 terraform init
-terraform apply -auto-approve
+terraform apply -auto-approve ```
 
 Note: Upon completion, Terraform will output the public IP addresses for both the Indexer and the Forwarder.
 
-2. Configuration Management (Ansible)
+### 2. Configuration Management (Ansible)
 Update the inventory.ini file with the IP addresses obtained from the previous step.
 
 Execute the playbook to install and configure the Splunk binaries. Note: To ensure security, the administrator password must be passed as an extra variable at runtime.
@@ -50,7 +50,8 @@ Bash
 
 # Replace 'YourStrongPassword123!' with your actual password
 ansible-playbook -i inventory.ini install_splunk.yml --extra-vars "splunk_password=YourStrongPassword123!"
-3. Validation
+
+### 3. Validation
 Access the Splunk Web Interface at http://<INDEXER_IP>:8000.
 
 Login with the username admin and the password defined in the step above.
@@ -91,13 +92,3 @@ Secrets Management: No hardcoded credentials exist in the codebase. SSH keys and
 Network isolation: Inter-node communication (Splunk-to-Splunk) is restricted to the internal VNet subnet range.
 
 
-***
-
-### 🛠️ Comment mettre à jour ton GitHub (Proprement)
-
-Une fois que tu as sauvegardé ce nouveau texte dans `README.md`, fais ceci dans ton terminal :
-
-```bash
-git add README.md
-git commit -m "Update documentation: Professional technical format"
-git push
