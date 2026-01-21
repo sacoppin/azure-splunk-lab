@@ -1,65 +1,103 @@
-# ☁️ Azure Splunk Lab: Automated Distributed Infrastructure
+# Azure Splunk Lab - Infrastructure as Code
 
-##  Project Overview
-This project demonstrates a fully automated deployment of a **Distributed Splunk Architecture** on **Microsoft Azure**.
-The goal was to simulate a real-world scenario where logs are collected from a client server (Universal Forwarder) and sent to a central indexing server (Splunk Enterprise), using **Infrastructure as Code (IaC)** principles.
+## Project Description
+This repository contains the Infrastructure as Code (IaC) scripts required to deploy a distributed Splunk Enterprise environment on Microsoft Azure.
 
-**Key Technologies:**
-* **Terraform:** Provisioning Azure resources (VMs, VNet, NSG, Public IPs).
-* **Ansible:** Configuration Management (Installing Splunk, Configuring Forwarding).
-* **Splunk Enterprise:** Central Log Management & Indexing.
-* **Azure Cloud:** Infrastructure hosting.
+The project automates the provisioning of cloud resources using **Terraform** and manages the configuration of application services using **Ansible**. It demonstrates a real-world scenario of log aggregation, where a Universal Forwarder collects system logs and transmits them to a central Splunk Indexer.
 
----
+## Architecture Overview
 
-##  Architecture
-The infrastructure consists of two distinct Azure Virtual Machines communicating over a private network:
+The infrastructure consists of two Azure Virtual Machines deployed within a secure Virtual Network (VNet):
 
-1.  **Splunk Indexer (Server):**
-    * Instance: `Standard_B2s` (Ubuntu 22.04)
-    * Role: Receives, parses, and indexes data.
-    * Port `8000`: Web Interface.
-    * Port `9997`: Splunk-to-Splunk (S2S) Listening.
+* **Splunk Indexer (Server)**
+    * **OS:** Ubuntu 22.04 LTS
+    * **Size:** Standard_B2s
+    * **Role:** Receives, parses, and indexes incoming log data.
+    * **Networking:** Exposes port 8000 (Web UI) and 9997 (S2S Receiver).
 
-2.  **Universal Forwarder (Client):**
-    * Instance: `Standard_B1s` (Ubuntu 22.04)
-    * Role: Monitors `/var/log/syslog` and forwards data to the Indexer.
+* **Universal Forwarder (Client)**
+    * **OS:** Ubuntu 22.04 LTS
+    * **Size:** Standard_B1s
+    * **Role:** Monitors `/var/log/syslog` and forwards data to the Indexer.
 
----
+* **Security:** Network Security Groups (NSG) are configured to restrict administrative access (SSH/Web) to authorized IP addresses only.
 
-##  Engineering Challenges & Troubleshooting
-*This section highlights the technical hurdles encountered during the project and how they were resolved using a systematic troubleshooting approach.*
+## Prerequisites
 
-### 🔴 Challenge 1: Azure Public IP Allocation Error
-* **Symptom:** Terraform failed with `IPv4BasicSkuPublicIpCountLimitReached`.
-* **Diagnosis:** Azure has deprecated "Basic" SKU IPs for new subscriptions in certain regions.
-* **Solution:** Refactored the `main.tf` code to explicitly request `Standard` SKU IPs with `Static` allocation method to comply with new Azure quotas.
+* Azure CLI installed and authenticated (`az login`).
+* Terraform (v1.0+).
+* Ansible (v2.9+).
+* SSH Key pair generated for Azure authentication.
 
-### 🔴 Challenge 2: Forwarder Connectivity (S2S Failure)
-* **Symptom:** The Universal Forwarder showed the Indexer as `Configured but inactive`. Logs were not arriving.
-* **Troubleshooting Steps:**
-    1.  **Service Check:** Verified Splunk was running on the Indexer using `systemctl status`.
-    2.  **Port Check:** Used `sudo ss -tulpn | grep 9997` on the Indexer to confirm it was listening. **Result: OK.**
-    3.  **Network Check:** Attempted `telnet <Indexer_IP> 9997` from the Forwarder. **Result: Connection Refused.**
-* **Root Cause:** An IP Mismatch. The Forwarder was configured to point to `10.0.1.4`, but Azure had assigned `10.0.1.5` to the Indexer upon recreation.
-* **Solution:** Updated the Forwarder configuration via CLI:
-    ```bash
-    ./splunk remove forward-server 10.0.1.4:9997
-    ./splunk add forward-server 10.0.1.5:9997
-    ```
-    *Result: State changed to "Active forwards" immediately.*
+## Deployment Instructions
 
----
+### 1. Infrastructure Provisioning (Terraform)
+Initialize the project and apply the configuration to create the Azure resources.
 
-##  How to Deploy
-
-### Prerequisites
-* Azure CLI (`az login`)
-* Terraform installed
-* Ansible installed
-
-### 1. Provision Infrastructure
 ```bash
 cd terraform
 terraform init
 terraform apply -auto-approve
+
+Note: Upon completion, Terraform will output the public IP addresses for both the Indexer and the Forwarder.
+
+2. Configuration Management (Ansible)
+Update the inventory.ini file with the IP addresses obtained from the previous step.
+
+Execute the playbook to install and configure the Splunk binaries. Note: To ensure security, the administrator password must be passed as an extra variable at runtime.
+
+Bash
+
+# Replace 'YourStrongPassword123!' with your actual password
+ansible-playbook -i inventory.ini install_splunk.yml --extra-vars "splunk_password=YourStrongPassword123!"
+3. Validation
+Access the Splunk Web Interface at http://<INDEXER_IP>:8000.
+
+Login with the username admin and the password defined in the step above.
+
+Execute the following search query to verify log ingestion:
+
+Extrait de code
+
+index=main sourcetype=syslog
+Technical Challenges & Resolution Log
+During the implementation, the following technical issues were encountered and resolved:
+
+Issue: Azure Public IP Allocation (SkuMismatch)
+
+Error: Deployment failed with IPv4BasicSkuPublicIpCountLimitReached.
+
+Root Cause: Azure has deprecated Basic SKU Public IPs for new subscriptions in the deployed region.
+
+Resolution: Updated main.tf to explicitly define sku = "Standard" and allocation_method = "Static" for all public IP resources.
+
+Issue: Forwarder Connectivity Failure
+
+Error: The Universal Forwarder status was Configured but inactive.
+
+Root Cause: An IP mismatch occurred during the configuration phase. The Forwarder was pointing to an outdated private IP address of the Indexer (10.0.1.4) instead of the actual assigned IP (10.0.1.5).
+
+Resolution:
+
+Verified service status on Indexer using ss -tulpn | grep 9997 (Confirmed LISTEN state).
+
+Verified network reachability using telnet (Confirmed Connection Refused).
+
+Corrected the forwarding destination via the Splunk CLI on the client machine.
+
+Security Considerations
+Secrets Management: No hardcoded credentials exist in the codebase. SSH keys and variable files (.tfvars) are excluded via .gitignore.
+
+Network isolation: Inter-node communication (Splunk-to-Splunk) is restricted to the internal VNet subnet range.
+
+
+***
+
+### 🛠️ Comment mettre à jour ton GitHub (Proprement)
+
+Une fois que tu as sauvegardé ce nouveau texte dans `README.md`, fais ceci dans ton terminal :
+
+```bash
+git add README.md
+git commit -m "Update documentation: Professional technical format"
+git push
