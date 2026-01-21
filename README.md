@@ -46,7 +46,7 @@ Note: To ensure security, the administrator password must be passed as an extra 
 bash
 Copy
 
-# Replace 'YourStrongPassword123!' with your actual password
+#### Replace 'YourStrongPassword123!' with your actual password
 ansible-playbook -i inventory.ini install_splunk.yml --extra-vars "splunk_password=YourStrongPassword123!"
 
 
